@@ -32,7 +32,14 @@ def check(name: str, status: str, detail: str = "") -> None:
 
 
 def _sha(path: pathlib.Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    payload = path.read_bytes()
+    # Git may materialize tracked text files with CRLF when core.autocrlf=true on
+    # Windows.  The frozen corpus checksum was recorded from the same JSONL content
+    # with LF endings, so normalize only that transport-level difference; edits to
+    # any JSON character still change the digest and fail the integrity gate.
+    if path.suffix == ".jsonl":
+        payload = payload.replace(b"\r\n", b"\n")
+    return hashlib.sha256(payload).hexdigest()[:16]
 
 
 def _load_json(path: pathlib.Path):
